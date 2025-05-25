@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Poker Bot Frontend Preview</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      margin: 0 auto;
+      max-width: 480px;
+      background-color: #393E41;
+    }
+    h1 {
+      color: #F6F7EB;
+    }
+    .InputHelp {
+      color:#F6F7EB;
+    }
+    label, input, button, pre {
+      display: block;
+      width: 100%;
+      margin-bottom: 0.75rem;
+      color: #3F88C5;
+    }
+    input {
+      padding: 0.5rem;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 0.75rem;
+      cursor: pointer;
+    }
+    pre {
+      background: #F6F7EB;
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    #error-message {
+      color: red;
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Poker Bot</h1>
+  <form id="bot-form">
+    <label>
+      community (string - e.g., "Jc,Qd,Kh" or n/a for preflop)
+      <input type="text" id="community" placeholder="Enter community cards or n/a for preflop">
+    </label>
+    <label>
+      hole (string - e.g., "As,Kd")
+      <input type="text" id="hole" required placeholder="Enter hole cards (e.g., As,Kd)">
+    </label>
+    <label>
+      position (string)
+      <input type="text" id="position" required placeholder="SB, BB, UTG, MP, CO, BTN">
+    </label>
+    <label>
+      call (number)
+      <input type="number" id="call" required placeholder="Amount to call">
+    </label>
+    <label>
+      players (number)
+      <input type="number" id="players" required placeholder="Number of players">
+    </label>
+    <label>
+      initialBb (number)
+      <input type="number" id="initialBb" required placeholder="Initial big blind size">
+    </label>
+    <label>
+        model (string)
+        <input type="text" id="model" required placeholder="ChatGPT, DeepSeek, Claude">
+      </label>
+    <button type="submit">Submit</button>
+  </form>
+  <pre id="output"></pre>
+  <p id="error-message"></p>
+  <div class="InputHelp">
+    <h3>Input Help</h3>
+    <p><strong>Hole cards format:</strong> Enter two cards separated by commas (e.g., "As,Kd").</p>
+    <p><strong>Community cards format:</strong> Enter 3, 4, or 5 cards separated by commas (e.g., "Jc,Qd,Kh").</p>
+    <p><strong>Position:</strong> One of SB, BB, UTG, MP, CO, or BTN.</p>
+    <p><strong>Model:</strong> Choose from ChatGPT, DeepSeek, or Claude.</p>
+  </div>
+  <script>
+    // Named-parameter style: payload object
+    async function callEndpoint(payload) {
+      const url = 'https://19fp4q.buildship.run/quickApi-5ebd7c71609f';
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        console.log('Success:', result);
+        return result;
+      } catch (error) {
+        console.error('Error:', error);
+        throw error;
+      }
+    }
+
+    document.getElementById('bot-form').addEventListener('submit', async e => {
+      e.preventDefault();
+
+      // Read and validate inputs
+      const call = parseFloat(document.getElementById('call').value);
+      const initialBb = parseFloat(document.getElementById('initialBb').value);
+      const position = document.getElementById('position').value.trim().toUpperCase();
+      const community = document.getElementById('community').value.trim();
+      const players = parseInt(document.getElementById('players').value, 10);
+      const hole = document.getElementById('hole').value.trim();
+      const model = document.getElementById('model').value.trim();
+      const outputEl = document.getElementById('output');
+      const errorMsgEl = document.getElementById('error-message');
+      errorMsgEl.textContent = '';
+      outputEl.textContent = '';
+
+      // Basic validation
+      if (!hole) {
+        errorMsgEl.textContent = 'Hole cards are required.';
+        return;
+      }
+      if (isNaN(call) || isNaN(initialBb) || isNaN(players)) {
+        errorMsgEl.textContent = 'Numeric fields must be valid numbers.';
+        return;
+      }
+      const validPos = ['SB','BB','UTG','MP','CO','BTN'];
+      if (!validPos.includes(position)) {
+        errorMsgEl.textContent = 'Position must be one of: ' + validPos.join(', ') + '.';
+        return;
+      }
+
+      // Construct payload and call API
+      const payload = { call, initialBb, position, community, players, hole, model };
+      console.log('Payload:', payload);
+      outputEl.textContent = 'Loading…';
+
+      try {
+        const result = await callEndpoint(payload);
+
+        // Handle different result types
+        if (typeof result === 'string' || typeof result === 'number') {
+          outputEl.textContent = result;
+        } else if (Array.isArray(result)) {
+          outputEl.textContent = result.join('\n');
+        } else if (typeof result === 'object') {
+          outputEl.textContent = JSON.stringify(result, null, 2);
+        } else {
+          outputEl.textContent = String(result);
+        }
+      } catch (err) {
+        console.error('API Error:', err);
+        outputEl.textContent = '';
+        errorMsgEl.textContent = 'Error: ' + (err.message || err);
+      }
+    });
+  </script>
+</body>
+</html>
+ 
